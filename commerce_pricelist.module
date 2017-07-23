@@ -1,0 +1,63 @@
+<?php
+
+/**
+ * @file
+ * Contains commerce_pricelist.module..
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function commerce_pricelist_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the commerce_pricelist module.
+    case 'help.page.commerce_pricelist':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Set product prices through price lists') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function commerce_pricelist_theme() {
+  $theme = [];
+  $theme['price_list'] = [
+    'render element' => 'elements',
+    'file' => 'price_list.page.inc',
+    'template' => 'price_list',
+  ];
+  $theme['price_list_content_add_list'] = [
+    'render element' => 'content',
+    'variables' => ['content' => NULL],
+    'file' => 'price_list.page.inc',
+  ];
+  $theme['price_list_item'] = array(
+    'render element' => 'elements',
+    'file' => 'price_list_item.page.inc',
+    'template' => 'price_list_item',
+  );
+  return $theme;
+}
+
+/**
+* Implements hook_theme_suggestions_HOOK().
+*/
+function commerce_pricelist_theme_suggestions_price_list(array $variables) {
+  $suggestions = array();
+  $entity = $variables['elements']['#price_list'];
+  $sanitized_view_mode = strtr($variables['elements']['#view_mode'], '.', '_');
+
+  $suggestions[] = 'price_list__' . $sanitized_view_mode;
+  $suggestions[] = 'price_list__' . $entity->bundle();
+  $suggestions[] = 'price_list__' . $entity->bundle() . '__' . $sanitized_view_mode;
+  $suggestions[] = 'price_list__' . $entity->id();
+  $suggestions[] = 'price_list__' . $entity->id() . '__' . $sanitized_view_mode;
+  return $suggestions;
+}
