@@ -2,14 +2,14 @@
 
 namespace Drupal\commerce_pricelist\Resolver;
 
-use Drupal\commerce_pricing\Resolver\BasePriceResolverInterface;
+use Drupal\commerce_price\Resolver\PriceResolverInterface;
 
 /**
  * Interface PriceListBasePriceResolverInterface.
  *
  * @package Drupal\commerce_pricelist
  */
-interface PriceListBasePriceResolverInterface extends BasePriceResolverInterface {
+interface PriceListBasePriceResolverInterface extends PriceResolverInterface {
 
 
 }
