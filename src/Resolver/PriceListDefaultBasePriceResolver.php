@@ -2,8 +2,8 @@
 
 namespace Drupal\commerce_pricelist\Resolver;
 
+use Drupal\commerce\Context;
 use Drupal\commerce\PurchasableEntityInterface;
-use Drupal\commerce_price\Plugin\Field\FieldType\Price;
 
 
 /**
@@ -16,8 +16,8 @@ class PriceListDefaultBasePriceResolver implements PriceListBasePriceResolverInt
   /**
    * {@inheritdoc}
    */
-  public function resolve(PurchasableEntityInterface $entity, $quantity = 1) {
-    return $this->applies($entity) ? $entity->price->first() : NULL;
+  public function resolve(PurchasableEntityInterface $entity, $quantity = 1, Context $context) {
+    return $this->applies($entity) ? $entity->getPrice() : NULL;
   }
 
   /**
