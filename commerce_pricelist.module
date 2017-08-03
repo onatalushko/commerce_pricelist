@@ -61,3 +61,26 @@ function commerce_pricelist_theme_suggestions_price_list(array $variables) {
   $suggestions[] = 'price_list__' . $entity->id() . '__' . $sanitized_view_mode;
   return $suggestions;
 }
+
+/**
+ * Loads multiple pricelist_item entities.
+ *
+ * @param array $entity_ids
+ *   Array of product variation ids
+ *
+ * @return array \Drupal\commerce_pricelist\Entity\PriceListItem
+ *   An array of PriceListItem entities
+ */
+function commerce_pricelist_item_load_by_variation_ids($entity_ids) {
+  $entities = [];
+  foreach($entity_ids as $key => $id) {
+    $item = \Drupal::entityQuery('price_list_item')
+      ->condition('product_variation_id', $id)
+      ->execute();
+    if(!empty($item)) {
+      $entities[$item[1]] = \Drupal::entityTypeManager()->getStorage('price_list_item')->load($item[1]);
+    }
+  }
+
+  return $entities;
+}

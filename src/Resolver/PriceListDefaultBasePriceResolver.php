@@ -4,6 +4,8 @@ namespace Drupal\commerce_pricelist\Resolver;
 
 use Drupal\commerce\Context;
 use Drupal\commerce\PurchasableEntityInterface;
+use Drupal\commerce_price\Price;
+use Drupal\user\Entity\User;
 
 
 /**
@@ -17,7 +19,21 @@ class PriceListDefaultBasePriceResolver implements PriceListBasePriceResolverInt
    * {@inheritdoc}
    */
   public function resolve(PurchasableEntityInterface $entity, $quantity = 1, Context $context) {
-    return $this->applies($entity) ? $entity->getPrice() : NULL;
+    if ($this->applies($entity)) {
+      $price = $entity->getPrice();
+      $user = User::load(\Drupal::currentUser()->id());
+      // TODO: Need to order pricelist and pricelist items by weight
+      $items = commerce_pricelist_item_load_by_variation_ids([$entity->id()]);
+      foreach ($items as $key => $item) {
+        $pricelist = \Drupal::entityTypeManager()->getStorage( 'price_list')->load($item->get('price_list_id')->getValue()[0]['target_id']);
+        if ($pricelist->applies($user)) {
+          $price = $item->get('price')->first()->getValue();
+          $price = new Price($price['number'], $price['currency_code']) ;
+        }
+      }
+      return $price;
+    }
+    return NULL;
   }
 
   /**
