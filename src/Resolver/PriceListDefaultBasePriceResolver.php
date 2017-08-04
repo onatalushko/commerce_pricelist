@@ -25,13 +25,11 @@ class PriceListDefaultBasePriceResolver implements PriceListBasePriceResolverInt
       // TODO: Need to order pricelist and pricelist items by weight
       $items = commerce_pricelist_item_load_by_variation_ids([$entity->id()]);
       foreach ($items as $key => $item) {
-        $pricelist = \Drupal::entityTypeManager()->getStorage( 'price_list')->load($item->get('price_list_id')->getValue()[0]['target_id']);
+        $pricelist = \Drupal::entityTypeManager()->getStorage('price_list')->load($item->get('price_list_id')->getValue()[0]['target_id']);
         if ($pricelist->applies($user)) {
-          $price = $item->get('price')->first()->getValue();
-          $price = new Price($price['number'], $price['currency_code']) ;
+            return $item->apply($entity);
         }
       }
-      return $price;
     }
     return NULL;
   }

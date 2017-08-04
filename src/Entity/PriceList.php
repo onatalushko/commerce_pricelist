@@ -148,7 +148,7 @@ class PriceList extends ContentEntityBase implements PriceListInterface {
    * {@inheritdoc}
    */
   public function setPublished($published) {
-    $this->set('status', $published ? NODE_PUBLISHED : NODE_NOT_PUBLISHED);
+    $this->set('status', (bool) $published);
     return $this;
   }
 
@@ -169,6 +169,20 @@ class PriceList extends ContentEntityBase implements PriceListInterface {
       ->setLabel(t('UUID'))
       ->setDescription(t('The UUID of the Price list entity.'))
       ->setReadOnly(TRUE);
+
+    $fields['status'] = BaseFieldDefinition::create('boolean')
+      ->setLabel(t('Status'))
+      ->setDescription(t('Whether the pricelist is enabled.'))
+      ->setDefaultValue(TRUE)
+      ->setRequired(TRUE)
+      ->setSettings([
+          'on_label' => t('Enabled'),
+          'off_label' => t('Disabled'),
+      ])
+      ->setDisplayOptions('form', [
+          'type' => 'options_buttons',
+          'weight' => 0,
+      ]);
 
     $fields['user_id'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Authored by'))

@@ -3,4 +3,12 @@ services:
     class: Drupal\commerce_pricelist\Resolver\PriceListDefaultBasePriceResolver
     tags:
       - { name: commerce_price.price_resolver, priority: 0 }
+  commerce_pricelist.commerce_plugin_type_subscriber:
+    class: Drupal\commerce_pricelist\EventSubscriber\CommercePluginTypeEventSubscriber
+    arguments: []
+    tags:
+      - { name: event_subscriber }
+  plugin.manager.commerce_pricelist_offer:
+      class: Drupal\commerce_pricelist\PriceListOfferManager
+      arguments: ['@container.namespaces', '@cache.discovery', '@module_handler', '@entity_type.manager']
 
