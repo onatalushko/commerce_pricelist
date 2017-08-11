@@ -19,6 +19,43 @@ class PriceListItemForm extends ContentEntityForm {
     $form = parent::buildForm($form, $form_state);
     $entity = $this->entity;
 
+    $form['#tree'] = TRUE;
+    $form['#theme'] = ['commerce_pricelist_form'];
+    $form['#attached']['library'][] = 'commerce_pricelist/form';
+
+    $form['advanced'] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['entity-meta']],
+        '#weight' => 99,
+    ];
+
+    $form['option_details'] = [
+        '#type' => 'container',
+        '#title' => $this->t('Options'),
+        '#group' => 'advanced',
+        '#attributes' => ['class' => ['entity-meta__header']],
+        '#weight' => -100,
+    ];
+    $form['date_details'] = [
+        '#type' => 'details',
+        '#open' => TRUE,
+        '#title' => $this->t('Dates'),
+        '#group' => 'advanced',
+    ];
+
+    $field_details_mapping = [
+        'status' => 'option_details',
+        'weight' => 'option_details',
+        'start_date' => 'date_details',
+        'end_date' => 'date_details',
+    ];
+
+    foreach ($field_details_mapping as $field => $group) {
+      if (isset($form[$field])) {
+        $form[$field]['#group'] = $group;
+      }
+    }
+
     return $form;
   }
 
