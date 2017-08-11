@@ -27,22 +27,27 @@ function commerce_pricelist_help($route_name, RouteMatchInterface $route_match) 
  * Implements hook_theme().
  */
 function commerce_pricelist_theme() {
-  $theme = [];
-  $theme['price_list'] = [
-    'render element' => 'elements',
-    'file' => 'price_list.page.inc',
-    'template' => 'price_list',
+  return [
+    'price_list' => [
+      'render element' => 'elements',
+      'file' => 'price_list.page.inc',
+      'template' => 'price_list',
+    ],
+    'price_list_content_add_list' => [
+      'render element' => 'content',
+      'variables' => ['content' => NULL],
+      'file' => 'price_list.page.inc',
+    ],
+    'price_list_item' => [
+      'render element' => 'elements',
+      'file' => 'price_list_item.page.inc',
+      'template' => 'price_list_item',
+    ],
+    'commerce_pricelist_form' => [
+      'render element' => 'form',
+    ]
   ];
-  $theme['price_list_content_add_list'] = [
-    'render element' => 'content',
-    'variables' => ['content' => NULL],
-    'file' => 'price_list.page.inc',
-  ];
-  $theme['price_list_item'] = array(
-    'render element' => 'elements',
-    'file' => 'price_list_item.page.inc',
-    'template' => 'price_list_item',
-  );
+
   return $theme;
 }
 
@@ -60,4 +65,19 @@ function commerce_pricelist_theme_suggestions_price_list(array $variables) {
   $suggestions[] = 'price_list__' . $entity->id();
   $suggestions[] = 'price_list__' . $entity->id() . '__' . $sanitized_view_mode;
   return $suggestions;
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update().
+ */
+function commerce_pricelist_commerce_product_variation_update(Drupal\Core\Entity\EntityInterface $entity) {
+  $items = \Drupal::entityQuery('price_list_item')
+      ->condition('product_variation_id', $entity->id())
+      ->execute();
+  if(!empty($items) && (float)$entity->getPrice()->getNumber() !== (float)$entity->original->getPrice()->getNumber()) {
+    foreach($items as $key => $item) {
+      $pricelist_item = Drupal::entityTypeManager()->getStorage('price_list_item')->load($item);
+      $pricelist_item->save();
+    }
+  }
 }

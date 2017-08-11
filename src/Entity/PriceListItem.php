@@ -2,6 +2,9 @@
 
 namespace Drupal\commerce_pricelist\Entity;
 
+use Drupal\commerce_price\Price;
+use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Entity\ContentEntityBase;
@@ -40,13 +43,14 @@ use Drupal\user\UserInterface;
  *     "id" = "id",
  *     "label" = "name",
  *     "uuid" = "uuid",
+ *     "status" = "status",
  *   },
  *   links = {
- *     "canonical" = "/admin/commerce/config/price_list_item/{price_list_item}",
- *     "add-form" = "/admin/commerce/config/price_list_item/add",
- *     "edit-form" = "/admin/commerce/config/price_list_item/{price_list_item}/edit",
- *     "delete-form" = "/admin/commerce/config/price_list_item/{price_list_item}/delete",
- *     "collection" = "/admin/commerce/config/price_list_item",
+ *     "canonical" = "/price_list_item/{price_list_item}",
+ *     "add-form" = "/price_list_item/add",
+ *     "edit-form" = "/price_list_item/{price_list_item}/edit",
+ *     "delete-form" = "/price_list_item/{price_list_item}/delete",
+ *     "collection" = "/admin/commerce/price_list_item",
  *   },
  *   field_ui_base_route = "price_list_item.settings"
  * )
@@ -99,6 +103,8 @@ class PriceListItem extends ContentEntityBase implements PriceListItemInterface 
    */
   public function getPrice() {
     return $this->get('price')->first()->toPrice();
+    //$product = $this->getProductVariation();
+    //return $this->apply($product);
   }
 
   /**
@@ -118,6 +124,94 @@ class PriceListItem extends ContentEntityBase implements PriceListItemInterface 
   /**
    * {@inheritdoc}
    */
+  public function getStartDate() {
+    // Can't use the ->date property because it resets the timezone to UTC.
+    return new DrupalDateTime($this->get('start_date')->value);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setStartDate(DrupalDateTime $start_date) {
+    $this->get('start_date')->value = $start_date->format('Y-m-d');
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getEndDate() {
+    if (!$this->get('end_date')->isEmpty()) {
+      return new DrupalDateTime($this->get('end_date')->value);
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setEndDate(DrupalDateTime $end_date = NULL) {
+    $this->get('end_date')->value = $end_date ? $end_date->format('Y-m-d') : NULL;
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getWeight() {
+    return (int) $this->get('weight')->value;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setWeight($weight) {
+    $this->set('weight', $weight);
+    return $this;
+  }
+
+  public function updatePrice() {
+    $offer = $this->getOffer();
+    $price = null;
+    if ($offer->getEntityTypeId() == 'commerce_product_variation') {
+      $price = $offer->apply($this->getProductVariation());
+    }
+
+    $this->set('price', $price);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function available() {
+    if (!$this->isPublished()) {
+      return FALSE;
+    }
+    $time = \Drupal::time()->getRequestTime();
+    if ($this->getStartDate()->format('U') > $time) {
+      return FALSE;
+    }
+    $end_date = $this->getEndDate();
+    if ($end_date && $end_date->format('U') <= $time) {
+      return FALSE;
+    }
+
+    return TRUE;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function apply() {
+    if ($this->available()) {
+      return $this->getPrice();
+    }
+
+    return NULL;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function isPublished() {
     return (bool) $this->getEntityKey('status');
   }
@@ -126,8 +220,17 @@ class PriceListItem extends ContentEntityBase implements PriceListItemInterface 
    * {@inheritdoc}
    */
   public function setPublished($published) {
-    $this->set('status', $published ? NODE_PUBLISHED : NODE_NOT_PUBLISHED);
+    $this->set('status', (bool) $published);
     return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function preSave(EntityStorageInterface $storage) {
+    parent::preSave($storage);
+
+    $this->updatePrice();
   }
 
   /**
@@ -198,20 +301,69 @@ class PriceListItem extends ContentEntityBase implements PriceListItemInterface 
       ->setDisplayConfigurable('view', TRUE);
 
     $fields['price'] = BaseFieldDefinition::create('commerce_price')
-      ->setLabel(t('Price'))
-      ->setDescription(t('The list price'))
-      ->setDisplayOptions('view', [
-        'label' => 'above',
-        'type' => 'commerce_price_default',
-        'weight' => 0,
+        ->setLabel(t('Price'))
+        ->setDescription(t('The list price'))
+        ->setDisplayOptions('view', [
+            'label' => 'above',
+            'type' => 'commerce_price_default',
+            'weight' => 0,
+        ])
+        ->setDisplayOptions('form', [
+            'type' => 'commerce_price_default',
+            'region' => 'hidden',
+            'weight' => 0,
+        ])
+        ->setRequired(TRUE)
+        ->setDisplayConfigurable('view', TRUE);
+
+    $fields['status'] = BaseFieldDefinition::create('boolean')
+      ->setLabel(t('Status'))
+      ->setDescription(t('Whether the pricelist item is enabled.'))
+      ->setDefaultValue(TRUE)
+      ->setRequired(TRUE)
+      ->setSettings([
+          'on_label' => t('Enabled'),
+          'off_label' => t('Disabled'),
       ])
       ->setDisplayOptions('form', [
-        'type' => 'commerce_price_default',
-        'weight' => 0,
-      ])
+          'type' => 'options_buttons',
+          'weight' => 0,
+      ]);
+
+    $fields['start_date'] = BaseFieldDefinition::create('datetime')
+      ->setLabel(t('Start date'))
+      ->setDescription(t('The date the price becomes valid.'))
       ->setRequired(TRUE)
-      ->setDisplayConfigurable('form', TRUE)
-      ->setDisplayConfigurable('view', TRUE);
+      ->setSetting('datetime_type', 'date')
+      ->setDefaultValueCallback('Drupal\commerce_pricelist\Entity\PriceListItem::getDefaultStartDate')
+      ->setDisplayOptions('form', [
+          'type' => 'datetime_default',
+          'weight' => 5,
+      ]);
+
+    $fields['end_date'] = BaseFieldDefinition::create('datetime')
+      ->setLabel(t('End date'))
+      ->setDescription(t('The date after which the price is invalid.'))
+      ->setRequired(FALSE)
+      ->setSetting('datetime_type', 'date')
+      ->setDisplayOptions('form', [
+          'type' => 'commerce_end_date',
+          'weight' => 6,
+      ]);
+
+    $fields['offer'] = BaseFieldDefinition::create('commerce_plugin_item:commerce_pricelist_offer')
+      ->setLabel(t('Offer'))
+      ->setCardinality(1)
+      ->setRequired(TRUE)
+      ->setDisplayOptions('form', [
+          'type' => 'commerce_plugin_radios',
+          'weight' => 3,
+      ]);
+
+    $fields['weight'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Weight'))
+      ->setDescription(t('The weight of this pricelist item in relation to others.'))
+      ->setDefaultValue(0);
 
     $fields['created'] = BaseFieldDefinition::create('created')
       ->setLabel(t('Created'))
@@ -222,6 +374,64 @@ class PriceListItem extends ContentEntityBase implements PriceListItemInterface 
       ->setDescription(t('The time that the entity was last edited.'));
 
     return $fields;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getOffer() {
+    if (!$this->get('offer')->isEmpty()) {
+      return $this->get('offer')->first()->getTargetInstance();
+    }
+  }
+
+  /**
+   * Default value callback for 'start_date' base field definition.
+   *
+   * @see ::baseFieldDefinitions()
+   *
+   * @return string
+   *   The default value (date string).
+   */
+  public static function getDefaultStartDate() {
+    $timestamp = \Drupal::time()->getRequestTime();
+    return gmdate('Y-m-d', $timestamp);
+  }
+
+  /**
+   * Default value callback for 'end_date' base field definition.
+   *
+   * @see ::baseFieldDefinitions()
+   *
+   * @return int
+   *   The default value (date string).
+   */
+  public static function getDefaultEndDate() {
+    // Today + 1 year.
+    $timestamp = \Drupal::time()->getRequestTime();
+    return gmdate('Y-m-d', $timestamp + 31536000);
+  }
+
+  /**
+   * Helper callback for uasort() to sort pricelist items by weight and label.
+   *
+   * @param \Drupal\commerce_pricelist\PriceListItemInterface $a
+   *   The first pricelist item to sort.
+   * @param \Drupal\commerce_pricelist\PriceListItemInterface $b
+   *   The second pricelist item to sort.
+   *
+   * @return int
+   *   The comparison result for uasort().
+   */
+  public static function sort(PriceListItemInterface $a, PriceListItemInterface $b) {
+    $a_weight = $a->getWeight();
+    $b_weight = $b->getWeight();
+    if ($a_weight == $b_weight) {
+      $a_label = $a->label();
+      $b_label = $b->label();
+      return strnatcasecmp($a_label, $b_label);
+    }
+    return ($a_weight < $b_weight) ? -1 : 1;
   }
 
 }

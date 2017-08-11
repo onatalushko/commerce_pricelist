@@ -1,0 +1,5 @@
+commerce_pricelist.offer:
+  label: Commerce pricelist offer
+  provider: commerce_pricelist
+  plugin_manager_service_id: plugin.manager.commerce_pricelist_offer
+  plugin_definition_decorator_class: Drupal\plugin\PluginDefinition\ArrayPluginDefinitionDecorator

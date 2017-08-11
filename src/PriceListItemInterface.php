@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_pricelist;
 
+use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityChangedInterface;
 use Drupal\user\EntityOwnerInterface;
@@ -39,6 +40,79 @@ interface PriceListItemInterface extends ContentEntityInterface, EntityChangedIn
    *   Creation timestamp of the Price list item.
    */
   public function getCreatedTime();
+
+  /**
+   * Gets the offer.
+   *
+   * @return \Drupal\commerce_pricelist\Plugin\PriceList\Offer\PriceListOfferInterface|null
+   *   The offer, or NULL if not yet available.
+   */
+  public function getOffer();
+
+  /**
+   * Gets the pricelist item start date.
+   *
+   * @return \Drupal\Core\Datetime\DrupalDateTime
+   *   The pricelist item start date.
+   */
+  public function getStartDate();
+
+  /**
+   * Sets the pricelist item start date.
+   *
+   * @param \Drupal\Core\Datetime\DrupalDateTime $start_date
+   *   The pricelist item start date.
+   *
+   * @return $this
+   */
+  public function setStartDate(DrupalDateTime $start_date);
+
+  /**
+   * Gets the picelist item end date.
+   *
+   * @return \Drupal\Core\Datetime\DrupalDateTime
+   *   The pricelist item end date.
+   */
+  public function getEndDate();
+
+  /**
+   * Sets the pricelist item end date.
+   *
+   * @param \Drupal\Core\Datetime\DrupalDateTime $end_date
+   *   The pricelist item end date.
+   *
+   * @return $this
+   */
+  public function setEndDate(DrupalDateTime $end_date = NULL);
+
+  /**
+   * Gets the weight.
+   *
+   * @return int
+   *   The weight.
+   */
+  public function getWeight();
+
+  /**
+   * Sets the weight.
+   *
+   * @param int $weight
+   *   The weight.
+   *
+   * @return $this
+   */
+  public function setWeight($weight);
+
+  /**
+   * Checks whether the pricelist item is available.
+   *
+   * Ensures that the pricelist item is enabled and the current date
+   * matches the start and end dates.
+   *
+   * @return bool
+   *   TRUE if pricelist item is available, FALSE otherwise.
+   */
+  public function available();
 
   /**
    * Sets the Price list item creation timestamp.

@@ -2,12 +2,14 @@
 
 namespace Drupal\commerce_pricelist\Entity;
 
+use Drupal\commerce\ConditionGroup;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityChangedTrait;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\commerce_pricelist\PriceListInterface;
+use Drupal\user\Entity\User;
 use Drupal\user\UserInterface;
 
 /**
@@ -146,7 +148,7 @@ class PriceList extends ContentEntityBase implements PriceListInterface {
    * {@inheritdoc}
    */
   public function setPublished($published) {
-    $this->set('status', $published ? NODE_PUBLISHED : NODE_NOT_PUBLISHED);
+    $this->set('status', (bool) $published);
     return $this;
   }
 
@@ -167,6 +169,20 @@ class PriceList extends ContentEntityBase implements PriceListInterface {
       ->setLabel(t('UUID'))
       ->setDescription(t('The UUID of the Price list entity.'))
       ->setReadOnly(TRUE);
+
+    $fields['status'] = BaseFieldDefinition::create('boolean')
+      ->setLabel(t('Status'))
+      ->setDescription(t('Whether the pricelist is enabled.'))
+      ->setDefaultValue(TRUE)
+      ->setRequired(TRUE)
+      ->setSettings([
+          'on_label' => t('Enabled'),
+          'off_label' => t('Disabled'),
+      ])
+      ->setDisplayOptions('form', [
+          'type' => 'options_buttons',
+          'weight' => 0,
+      ]);
 
     $fields['user_id'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Authored by'))
@@ -214,6 +230,18 @@ class PriceList extends ContentEntityBase implements PriceListInterface {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['conditions'] = BaseFieldDefinition::create('commerce_plugin_item:commerce_condition')
+      ->setLabel(t('Conditions'))
+      ->setCardinality(BaseFieldDefinition::CARDINALITY_UNLIMITED)
+      ->setRequired(FALSE)
+      ->setDisplayOptions('form', [
+          'type' => 'commerce_conditions',
+          'weight' => 3,
+          'settings' => [
+              'entity_types' => ['user'],
+          ],
+      ]);
+
     $fields['weight'] = BaseFieldDefinition::create('integer')
       ->setLabel(t('Weight'))
       ->setDescription(t('The weight of this pricelist in relation to other pricelists.'))
@@ -233,6 +261,37 @@ class PriceList extends ContentEntityBase implements PriceListInterface {
       ->setDescription(t('The time that the entity was last edited.'));
 
     return $fields;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getConditions() {
+    $conditions = [];
+    foreach ($this->get('conditions') as $field_item) {
+      /** @var \Drupal\commerce\Plugin\Field\FieldType\PluginItemInterface $field_item */
+      $conditions[] = $field_item->getTargetInstance();
+    }
+    return $conditions;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function applies(User $user) {
+    $conditions = $this->getConditions();
+    if (!$conditions) {
+      // no conditions always apply.
+      return TRUE;
+    }
+    $user_conditions = array_filter($conditions, function ($condition) {
+      /** @var \Drupal\commerce\Plugin\Commerce\Condition\ConditionInterface $condition */
+      return $condition->getEntityTypeId() == 'user';
+    });
+
+    $user_conditions = new ConditionGroup($user_conditions, 'AND');
+
+    return $user_conditions->evaluate($user);
   }
 
 }
