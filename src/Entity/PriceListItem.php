@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_pricelist\Entity;
 
+use Drupal\commerce_price\Price;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityStorageInterface;
@@ -101,8 +102,9 @@ class PriceListItem extends ContentEntityBase implements PriceListItemInterface 
    * {@inheritdoc}
    */
   public function getPrice() {
-    $product = $this->getProductVariation();
-    return $this->apply($product);
+    return $this->get('price')->first()->toPrice();
+    //$product = $this->getProductVariation();
+    //return $this->apply($product);
   }
 
   /**
@@ -167,6 +169,16 @@ class PriceListItem extends ContentEntityBase implements PriceListItemInterface 
     return $this;
   }
 
+  public function updatePrice() {
+    $offer = $this->getOffer();
+    $price = null;
+    if ($offer->getEntityTypeId() == 'commerce_product_variation') {
+      $price = $offer->apply($this->getProductVariation());
+    }
+
+    $this->set('price', $price);
+  }
+
   /**
    * {@inheritdoc}
    */
@@ -189,15 +201,9 @@ class PriceListItem extends ContentEntityBase implements PriceListItemInterface 
   /**
    * {@inheritdoc}
    */
-  public function apply(EntityInterface $entity) {
+  public function apply() {
     if ($this->available()) {
-      $offer = $this->getOffer();
-      $price = null;
-      if ($offer->getEntityTypeId() == 'commerce_product_variation') {
-        $price = $offer->apply($entity);
-      }
-
-      return $price;
+      return $this->getPrice();
     }
 
     return NULL;
@@ -216,6 +222,15 @@ class PriceListItem extends ContentEntityBase implements PriceListItemInterface 
   public function setPublished($published) {
     $this->set('status', (bool) $published);
     return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function preSave(EntityStorageInterface $storage) {
+    parent::preSave($storage);
+
+    $this->updatePrice();
   }
 
   /**
@@ -284,6 +299,22 @@ class PriceListItem extends ContentEntityBase implements PriceListItemInterface 
       ))
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
+
+    $fields['price'] = BaseFieldDefinition::create('commerce_price')
+        ->setLabel(t('Price'))
+        ->setDescription(t('The list price'))
+        ->setDisplayOptions('view', [
+            'label' => 'above',
+            'type' => 'commerce_price_default',
+            'weight' => 0,
+        ])
+        ->setDisplayOptions('form', [
+            'type' => 'commerce_price_default',
+            'region' => 'hidden',
+            'weight' => 0,
+        ])
+        ->setRequired(TRUE)
+        ->setDisplayConfigurable('view', TRUE);
 
     $fields['status'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Status'))

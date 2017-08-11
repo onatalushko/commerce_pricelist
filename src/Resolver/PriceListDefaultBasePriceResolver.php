@@ -5,6 +5,7 @@ namespace Drupal\commerce_pricelist\Resolver;
 use Drupal\commerce\Context;
 use Drupal\commerce\PurchasableEntityInterface;
 use Drupal\commerce_price\Price;
+use Drupal\commerce_pricelist\PriceListService;
 use Drupal\user\Entity\User;
 
 
@@ -16,23 +17,45 @@ use Drupal\user\Entity\User;
 class PriceListDefaultBasePriceResolver implements PriceListBasePriceResolverInterface {
 
   /**
+   * The PriceList Service.
+   *
+   * @var \Drupal\commerce_pricelist\PriceListService
+   */
+  protected $priceListService;
+
+  /**
+   * Constructs a new PriceResolver object.
+   *
+   * @param \Drupal\commerce_pricelist\PriceListService $pricelist_service
+   *   The entity type manager.
+   */
+  public function __construct(PriceListService $pricelist_service) {
+    $this->priceListService = $pricelist_service;
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function resolve(PurchasableEntityInterface $entity, $quantity = 1, Context $context) {
     if ($this->applies($entity)) {
       $price = $entity->getPrice();
-      $user = User::load(\Drupal::currentUser()->id());
       // TODO: Need to order pricelist and pricelist items by weight
-      $items = commerce_pricelist_item_load_by_variation_ids([$entity->id()]);
+      $items = $this->priceListService->getPriceListItemsByVariationId([$entity->id()]);
       foreach ($items as $key => $item) {
-        $pricelist = \Drupal::entityTypeManager()->getStorage('price_list')->load($item->get('price_list_id')->getValue()[0]['target_id']);
-        if ($pricelist->applies($user)) {
-            return $item->apply($entity);
+        // Load the PriceList Entity associated with the PriceListItem.
+        $pricelist = $this->priceListService->getPriceListEntities([$item->get('price_list_id')->getValue()[0]['target_id']]);
+        foreach ($pricelist as $key => $value) {
+          if ($value->applies(User::load($context->getCustomer()->id()))) {
+            return $item->getPrice();
+          }
+          break;
         }
       }
     }
     return NULL;
   }
+
+
 
   /**
    * Determines whether the resolver applies to the given purchasable entity.
