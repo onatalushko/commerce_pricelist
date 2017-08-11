@@ -4,7 +4,7 @@ namespace Drupal\commerce_pricelist;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityListBuilder;
-use Drupal\Core\Routing\LinkGeneratorTrait;
+use Drupal\Core\Link;
 use Drupal\Core\Url;
 
 /**
@@ -13,7 +13,6 @@ use Drupal\Core\Url;
  * @ingroup commerce_pricelist
  */
 class PriceListItemListBuilder extends EntityListBuilder {
-  use LinkGeneratorTrait;
   /**
    * {@inheritdoc}
    */
@@ -32,13 +31,9 @@ class PriceListItemListBuilder extends EntityListBuilder {
     /* @var $entity \Drupal\commerce_pricelist\Entity\PriceListItem */
     $row['product'] = $entity->getProductVariation()->label();
     $row['sku'] = $entity->getProductVariation()->getSku();
-    $row['name'] = $this->l(
-      $entity->label(),
-      new Url(
-        'entity.price_list_item.edit_form', array(
-          'price_list_item' => $entity->id(),
-        )
-      )
+    $row['name'] = new Link(
+        $entity->label(),
+        new Url('entity.price_list_item.edit_form', ['price_list_item' => $entity->id()])
     );
     $row['price'] = $entity->getPrice();
     return $row + parent::buildRow($entity);
