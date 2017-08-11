@@ -23,8 +23,9 @@ class ProductPercentageOff extends PercentageOffBase {
   public function apply(EntityInterface $entity) {
     $this->assertEntity($entity);
 
-    $product = $entity;
-    $adjustment_amount = $product->getPrice()->multiply($this->getAmount());
+    $price = $entity->getPrice();
+    $discount = $price->multiply($this->getAmount());
+    $adjustment_amount = $price->subtract($discount);
 
     return $this->rounder->round($adjustment_amount);
   }
